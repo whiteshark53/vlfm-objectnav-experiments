@@ -391,6 +391,13 @@ class VLFMConfig:
     non_coco_threshold: float = 0.4
     agent_radius: float = 0.18
 
+    # Localization-error experiment. All values are in meters/degrees.
+    pose_noise_xy_std: float = 0.0
+    pose_noise_yaw_std_deg: float = 0.0
+    pose_drift_xy_std_per_step: float = 0.0
+    pose_drift_yaw_std_deg_per_step: float = 0.0
+    pose_noise_seed: int = 20261029
+
     @classmethod  # type: ignore
     @property
     def kwaarg_names(cls) -> List[str]:

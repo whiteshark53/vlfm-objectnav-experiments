@@ -267,6 +267,92 @@ class ITMPolicyV2(BaseITMPolicy):
         return sorted_frontiers, sorted_values
 
 
+
+class ConfidenceAwareITMPolicyV2(ITMPolicyV2):
+    """ITMPolicyV2 with local geometric-confidence-aware frontier ranking."""
+
+    confidence_penalty = 0.15
+
+    def _sort_frontiers_by_value(
+        self, observations: "TensorDict", frontiers: np.ndarray
+    ) -> Tuple[np.ndarray, List[float]]:
+        value_map = self._value_map
+        sorted_frontiers, semantic_values = value_map.sort_waypoints(
+            frontiers, 0.5
+        )
+
+        confidence_map = value_map._map
+        radius_px = int(0.5 * value_map.pixels_per_meter)
+        map_shape = value_map._value_map.shape
+
+        adjusted_scores = []
+
+        for point, semantic_value in zip(sorted_frontiers, semantic_values):
+            x, y = point[:2]
+
+            px = int(-x * value_map.pixels_per_meter) + value_map._episode_pixel_origin[0]
+            py = int(-y * value_map.pixels_per_meter) + value_map._episode_pixel_origin[1]
+
+            # ValueMap coordinates are (row, column), not (x, y).
+            center_row = map_shape[0] - px
+            center_col = py
+
+            row0 = max(0, center_row - radius_px)
+            row1 = min(confidence_map.shape[0], center_row + radius_px + 1)
+            col0 = max(0, center_col - radius_px)
+            col1 = min(confidence_map.shape[1], center_col + radius_px + 1)
+
+            if row0 >= row1 or col0 >= col1:
+                local_confidence = 0.0
+            else:
+                rows, cols = np.ogrid[row0:row1, col0:col1]
+                disk = (
+                    (rows - center_row) ** 2
+                    + (cols - center_col) ** 2
+                    <= radius_px ** 2
+                )
+                local_values = confidence_map[row0:row1, col0:col1]
+                valid = disk & (local_values > 0)
+
+                local_confidence = (
+                    float(np.mean(local_values[valid]))
+                    if np.any(valid)
+                    else 0.0
+                )
+
+            score = float(semantic_value) - self.confidence_penalty * (
+                1.0 - local_confidence
+            )
+            adjusted_scores.append(score)
+
+        # Diagnostics only: compare the original semantic winner with CAFS.
+        semantic_winner = sorted_frontiers[0].copy() if len(sorted_frontiers) else None
+        order = np.argsort(-np.asarray(adjusted_scores))
+        ranked_frontiers = sorted_frontiers[order]
+        ranked_scores = [adjusted_scores[i] for i in order]
+
+        if not hasattr(self, "_cafs_diag_calls"):
+            self._cafs_diag_calls = 0
+            self._cafs_diag_rank_changes = 0
+
+        self._cafs_diag_calls += 1
+        if (
+            semantic_winner is not None
+            and len(ranked_frontiers)
+            and not np.allclose(semantic_winner[:2], ranked_frontiers[0][:2])
+        ):
+            self._cafs_diag_rank_changes += 1
+            print(
+                "CAFS_RANK_CHANGE "
+                f"semantic={semantic_winner[:2].tolist()} "
+                f"cafs={ranked_frontiers[0][:2].tolist()} "
+                f"calls={self._cafs_diag_calls} "
+                f"changes={self._cafs_diag_rank_changes}"
+            )
+
+        return ranked_frontiers, ranked_scores
+
+
 class ITMPolicyV3(ITMPolicyV2):
     def __init__(self, exploration_thresh: float, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

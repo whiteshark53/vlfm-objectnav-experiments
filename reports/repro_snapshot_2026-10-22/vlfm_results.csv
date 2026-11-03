@@ -1,0 +1,4 @@
+method,scene,episodes,successes,SR,SPL,SoftSPL,mean_reward,mean_distance_to_goal,target_detected,stop_called,notes
+VLFM,17DRP5sb8fy,5,4,0.80,0.4609,0.4924,5.2848,0.7582,1.00,1.00,Short preliminary run; no trained PPO checkpoint
+VLFM,17DRP5sb8fy,50,23,0.46,0.2798,0.3699,4.0550,2.1833,0.78,0.78,Single-scene evaluation; no trained PPO checkpoint
+OracleFBE,17DRP5sb8fy,50,7,0.14,0.1028,0.2686,1.0926,4.0875,0.18,0.18,Oracle-map nearest-frontier baseline; single-scene evaluation

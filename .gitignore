@@ -186,3 +186,25 @@ habitat-lab/
 GroundingDINO/
 __pycache__/
 *.pyc
+
+# Local VLFM experiment artifacts
+data/datasets/
+data/scene_datasets/
+data/versioned_data/
+data/*.pth
+data/*.pt
+MobileSAM/
+yolov7/
+GroundingDINO/
+outputs/
+tb/
+wandb/
+reports/**/videos/
+reports/**/final_frames/
+reports/**/frames/
+reports/**/logs/
+*.bak
+*.bak_*
+*.tar.gz
+*.tar.gz.part_*
+traced_model.pt

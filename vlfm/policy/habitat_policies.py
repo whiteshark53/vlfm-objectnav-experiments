@@ -23,7 +23,7 @@ from vlfm.vlm.grounding_dino import ObjectDetections
 
 from ..mapping.obstacle_map import ObstacleMap
 from .base_objectnav_policy import BaseObjectNavPolicy, VLFMConfig
-from .itm_policy import ITMPolicy, ITMPolicyV2, ITMPolicyV3
+from .itm_policy import ITMPolicy, ITMPolicyV2, ITMPolicyV3, ConfidenceAwareITMPolicyV2
 
 HM3D_ID_TO_NAME = ["chair", "bed", "potted plant", "toilet", "tv", "couch"]
 MP3D_ID_TO_NAME = [
@@ -79,10 +79,25 @@ class HabitatMixin:
         camera_fov: float,
         image_width: int,
         dataset_type: str = "hm3d",
+        pose_noise_xy_std: float = 0.0,
+        pose_noise_yaw_std_deg: float = 0.0,
+        pose_drift_xy_std_per_step: float = 0.0,
+        pose_drift_yaw_std_deg_per_step: float = 0.0,
+        pose_noise_seed: int = 20261029,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
+        self._pose_noise_xy_std = float(pose_noise_xy_std)
+        self._pose_noise_yaw_std = float(np.deg2rad(pose_noise_yaw_std_deg))
+        self._pose_drift_xy_std = float(pose_drift_xy_std_per_step)
+        self._pose_drift_yaw_std = float(np.deg2rad(pose_drift_yaw_std_deg_per_step))
+        self._pose_noise_seed = int(pose_noise_seed)
+        self._pose_episode_index = -1
+        self._pose_rng = np.random.default_rng(self._pose_noise_seed)
+        self._pose_drift_xy = np.zeros(2, dtype=np.float64)
+        self._pose_drift_yaw = 0.0
+
         self._camera_height = camera_height
         self._min_depth = min_depth
         self._max_depth = max_depth
@@ -113,6 +128,9 @@ class HabitatMixin:
             kwargs["dataset_type"] = "hm3d"
         elif "mp3d" in config.habitat.dataset.data_path:
             kwargs["dataset_type"] = "mp3d"
+        elif "hssd-hab" in config.habitat.dataset.data_path:
+            # HSSD smoke-test compatibility: use VLFM's six-category mapping.
+            kwargs["dataset_type"] = "hm3d"
         else:
             raise ValueError("Dataset type could not be inferred from habitat config")
 
@@ -157,6 +175,12 @@ class HabitatMixin:
         parent_cls._reset()
         self._start_yaw = None
 
+        self._pose_episode_index += 1
+        episode_seed = self._pose_noise_seed + self._pose_episode_index
+        self._pose_rng = np.random.default_rng(episode_seed)
+        self._pose_drift_xy = np.zeros(2, dtype=np.float64)
+        self._pose_drift_yaw = 0.0
+
     def _get_policy_info(self, detections: ObjectDetections) -> Dict[str, Any]:
         """Get policy info for logging"""
         parent_cls: BaseObjectNavPolicy = super()  # type: ignore
@@ -181,12 +205,38 @@ class HabitatMixin:
         rgb = observations["rgb"][0].cpu().numpy()
         depth = observations["depth"][0].cpu().numpy()
         x, y = observations["gps"][0].cpu().numpy()
-        camera_yaw = observations["compass"][0].cpu().item()
+        camera_yaw = float(observations["compass"][0].cpu().item())
         depth = filter_depth(depth.reshape(depth.shape[:2]), blur_type=None)
-        # Habitat GPS makes west negative, so flip y
-        camera_position = np.array([x, -y, self._camera_height])
-        robot_xy = camera_position[:2]
-        tf_camera_to_episodic = xyz_yaw_to_tf_matrix(camera_position, camera_yaw)
+
+        # Convert Habitat GPS coordinates to the episodic XY frame.
+        true_xy = np.array([x, -y], dtype=np.float64)
+
+        # Slowly varying random-walk drift, accumulated within this episode.
+        self._pose_drift_xy += self._pose_rng.normal(
+            0.0, self._pose_drift_xy_std, size=2
+        )
+        self._pose_drift_yaw += float(
+            self._pose_rng.normal(0.0, self._pose_drift_yaw_std)
+        )
+
+        # Independent white measurement noise.
+        xy_measurement_noise = self._pose_rng.normal(
+            0.0, self._pose_noise_xy_std, size=2
+        )
+        yaw_measurement_noise = float(
+            self._pose_rng.normal(0.0, self._pose_noise_yaw_std)
+        )
+
+        # The policy receives only the corrupted estimated pose.
+        robot_xy = true_xy + self._pose_drift_xy + xy_measurement_noise
+        estimated_yaw = camera_yaw + self._pose_drift_yaw + yaw_measurement_noise
+        estimated_yaw = float(np.arctan2(np.sin(estimated_yaw), np.cos(estimated_yaw)))
+
+        camera_position = np.array(
+            [robot_xy[0], robot_xy[1], self._camera_height],
+            dtype=np.float64,
+        )
+        tf_camera_to_episodic = xyz_yaw_to_tf_matrix(camera_position, estimated_yaw)
 
         self._obstacle_map: ObstacleMap
         if self._compute_frontiers:
@@ -200,7 +250,7 @@ class HabitatMixin:
                 self._camera_fov,
             )
             frontiers = self._obstacle_map.frontiers
-            self._obstacle_map.update_agent_traj(robot_xy, camera_yaw)
+            self._obstacle_map.update_agent_traj(robot_xy, estimated_yaw)
         else:
             if "frontier_sensor" in observations:
                 frontiers = observations["frontier_sensor"][0].cpu().numpy()
@@ -211,7 +261,7 @@ class HabitatMixin:
             "frontier_sensor": frontiers,
             "nav_depth": observations["depth"],  # for pointnav
             "robot_xy": robot_xy,
-            "robot_heading": camera_yaw,
+            "robot_heading": estimated_yaw,
             "object_map_rgbd": [
                 (
                     rgb,
@@ -235,6 +285,25 @@ class HabitatMixin:
             ],
             "habitat_start_yaw": observations["heading"][0].item(),
         }
+
+
+@baseline_registry.register_policy
+class GreedyFrontierPolicy(HabitatMixin, BaseObjectNavPolicy):
+    """Select the nearest available frontier without semantic scoring."""
+
+    def _explore(self, observations: TensorDict) -> Tensor:
+        frontiers = self._observations_cache["frontier_sensor"]
+
+        if len(frontiers) == 0 or np.array_equal(frontiers, np.zeros((1, 2))):
+            print("No frontiers found during exploration, stopping.")
+            return self._stop_action
+
+        robot_xy = self._observations_cache["robot_xy"]
+        distances = np.linalg.norm(frontiers[:, :2] - robot_xy[None, :2], axis=1)
+        best_frontier = frontiers[int(np.argmin(distances)), :2]
+
+        print(f"Greedy frontier distance: {np.min(distances):.3f} m")
+        return self._pointnav(best_frontier, stop=False)
 
 
 @baseline_registry.register_policy
@@ -273,6 +342,11 @@ class HabitatITMPolicyV2(HabitatMixin, ITMPolicyV2):
 
 @baseline_registry.register_policy
 class HabitatITMPolicyV3(HabitatMixin, ITMPolicyV3):
+    pass
+
+
+@baseline_registry.register_policy
+class HabitatITMPolicyV2ConfidenceAware(HabitatMixin, ConfidenceAwareITMPolicyV2):
     pass
 
 
