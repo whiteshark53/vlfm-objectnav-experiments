@@ -1,0 +1,12 @@
+- benchmark/nav/objectnav=objectnav_mp3d
+- habitat.dataset.data_path="data/datasets/objectnav/mp3d/v1/{split}/{split}.json.gz"
+- habitat.dataset.split=train
+- habitat_baselines.evaluate=True
+- habitat_baselines.test_episode_count=1
+- habitat_baselines.eval.should_load_ckpt=False
+- habitat_baselines.eval_ckpt_path_dir=data/dummy_policy.pth
+- habitat_baselines.load_resume_state_config=False
+- habitat_baselines.rl.policy.name=HabitatITMPolicyV2
+- habitat.dataset.content_scenes=[17DRP5sb8fy]
+- habitat.dataset.scenes_dir=data/scene_datasets
+- habitat.simulator.habitat_sim_v0.gpu_device_id=-1

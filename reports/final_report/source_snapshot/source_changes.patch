@@ -1,0 +1,48 @@
+diff --git a/vlfm/policy/habitat_policies.py b/vlfm/policy/habitat_policies.py
+index f564f2e..07cdfd6 100644
+--- a/vlfm/policy/habitat_policies.py
++++ b/vlfm/policy/habitat_policies.py
+@@ -113,6 +113,9 @@ class HabitatMixin:
+             kwargs["dataset_type"] = "hm3d"
+         elif "mp3d" in config.habitat.dataset.data_path:
+             kwargs["dataset_type"] = "mp3d"
++        elif "hssd-hab" in config.habitat.dataset.data_path:
++            # HSSD smoke-test compatibility: use VLFM's six-category mapping.
++            kwargs["dataset_type"] = "hm3d"
+         else:
+             raise ValueError("Dataset type could not be inferred from habitat config")
+
+diff --git a/vlfm/policy/utils/pointnav_policy.py b/vlfm/policy/utils/pointnav_policy.py
+index 517d067..d569460 100644
+--- a/vlfm/policy/utils/pointnav_policy.py
++++ b/vlfm/policy/utils/pointnav_policy.py
+@@ -171,14 +171,14 @@ def load_pointnav_policy(file_path: str) -> PointNavResNetTensorOutputPolicy:
+             pointnav_policy.net = PointNavResNetNet(discrete_actions=True, no_fwd_dict=True)
+             state_dict = torch.load(file_path + ".state_dict", map_location="cpu")
+         else:
+-            ckpt_dict = torch.load(file_path, map_location="cpu")
++            ckpt_dict = torch.load(file_path, map_location="cpu", weights_only=False)
+             pointnav_policy = PointNavResNetTensorOutputPolicy.from_config(ckpt_dict["config"], obs_space, action_space)
+             state_dict = ckpt_dict["state_dict"]
+         pointnav_policy.load_state_dict(state_dict)
+         return pointnav_policy
+
+     else:
+-        ckpt_dict = torch.load(file_path, map_location="cpu")
++        ckpt_dict = torch.load(file_path, map_location="cpu", weights_only=False)
+         pointnav_policy = PointNavResNetTensorOutputPolicy()
+         current_state_dict = pointnav_policy.state_dict()
+         # Let old checkpoints work with new code
+diff --git a/vlfm/vlm/server_wrapper.py b/vlfm/vlm/server_wrapper.py
+index 344057a..153283f 100644
+--- a/vlfm/vlm/server_wrapper.py
++++ b/vlfm/vlm/server_wrapper.py
+@@ -133,7 +133,7 @@ def _send_request(url: str, **kwargs: Any) -> dict:
+         start_time = time.time()
+         while True:
+             try:
+-                resp = requests.post(url, headers=headers, json=payload, timeout=1)
++                resp = requests.post(url, headers=headers, json=payload, timeout=30)
+                 if resp.status_code == 200:
+                     result = resp.json()
+                     break

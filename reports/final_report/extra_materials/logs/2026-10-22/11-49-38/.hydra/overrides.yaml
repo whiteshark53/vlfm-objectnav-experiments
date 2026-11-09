@@ -1,0 +1,13 @@
+- benchmark/nav/objectnav=objectnav_mp3d
+- habitat.dataset.split=train
+- habitat.dataset.scenes_dir=data/scene_datasets
+- habitat.dataset.content_scenes=[17DRP5sb8fy]
+- habitat.dataset.data_path=data/datasets/objectnav/mp3d/v1/\{split\}/\{split\}.json.gz
+- habitat.simulator.habitat_sim_v0.gpu_device_id=-1
+- habitat.environment.max_episode_steps=50
+- habitat_baselines.evaluate=True
+- habitat_baselines.eval.split=train
+- habitat_baselines.test_episode_count=1
+- habitat_baselines.num_environments=1
+- habitat_baselines.eval.video_option=[]
+- habitat_baselines.load_resume_state_config=False

@@ -1,0 +1,11 @@
+- habitat.dataset.data_path=/home/rakonyats_d/vlfm/data/datasets/objectnav/hssd-hab/v1/vlfm_smoke_val/content/102343992.json.gz
+- habitat.dataset.scenes_dir=
+- habitat.simulator.habitat_sim_v0.gpu_device_id=-1
+- habitat_baselines.evaluate=True
+- habitat_baselines.eval_ckpt_path_dir=/home/rakonyats_d/vlfm/data/dummy_policy.pth
+- habitat_baselines.load_resume_state_config=False
+- habitat_baselines.num_environments=1
+- habitat_baselines.test_episode_count=1
+- habitat_baselines.eval.split=val
+- habitat_baselines.video_dir=/home/rakonyats_d/vlfm/reports/hssd_smoke_video
+- habitat_baselines.eval.video_option=[]
