@@ -48,7 +48,7 @@ for batch_start in range(0, len(videos), batch_size):
         if not frames:
             continue
 
-        # Четыре кадра одного эпизода в одну строку
+        
         strip = cv2.hconcat(frames)
         label = path.name[:110]
         canvas = cv2.copyMakeBorder(
