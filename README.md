@@ -1,137 +1,93 @@
-<p align="center">
-  <img src="docs/teaser_v1.jpg" width="700">
-  <h1 align="center">VLFM: Vision-Language Frontier Maps for Zero-Shot Semantic Navigation</h1>
-  <h3 align="center">
-    <a href="http://naoki.io/">Naoki Yokoyama</a>, <a href="https://faculty.cc.gatech.edu/~sha9/">Sehoon Ha</a>, <a href="https://faculty.cc.gatech.edu/~dbatra/">Dhruv Batra</a>, <a href="https://www.robo.guru/about.html">Jiuguang Wang</a>, <a href="https://bucherb.github.io">Bernadette Bucher</a>
-  </h3>
-  <p align="center">
-    <a href="http://naoki.io/portfolio/vlfm.html">Project Website</a> , <a href="https://arxiv.org/abs/2312.03275">Paper (arXiv)</a>
-  </p>
-  <p align="center">
-    <a href="https://github.com/bdaiinstitute/vlfm">
-      <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
-    </a>
-    <a href="https://www.python.org/">
-      <img src="https://img.shields.io/badge/built%20with-Python3-red.svg" />
-    </a>
-    <a href="https://github.com/jiuguangw/Agenoria/actions">
-      <img src="https://github.com/bdaiinstitute/vlfm/actions/workflows/test.yml/badge.svg">
-    </a>
-    <a href="https://github.com/psf/black">
-      <img src="https://img.shields.io/badge/code%20style-black-000000.svg">
-    </a>
-    <a href="https://github.com/astral-sh/ruff">
-      <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json">
-    </a>
-    <a href="https://github.com/python/mypy">
-      <img src="http://www.mypy-lang.org/static/mypy_badge.svg">
-    </a>
-  </p>
-</p>
+# VLFM ObjectNav: репликация, шум локализации и CAFS
 
-## :sparkles: Overview
+Эксперименты по методу **VLFM** (Vision-Language Frontier Maps, Yokoyama et al., ICRA 2024) в Habitat: воспроизведение базового
+результата, сравнение с frontier-baseline, чувствительность к ошибкам оценки позы и проверка модификации CAFS.
 
-Understanding how humans leverage semantic knowledge to navigate unfamiliar environments and decide where to explore next is pivotal for developing robots capable of human-like search behaviors. We introduce a zero-shot navigation approach, Vision-Language Frontier Maps (VLFM), which is inspired by human reasoning and designed to navigate towards unseen semantic objects in novel environments. VLFM builds occupancy maps from depth observations to identify frontiers, and leverages RGB observations and a pre-trained vision-language model to generate a language-grounded value map. VLFM then uses this map to identify the most promising frontier to explore for finding an instance of a given target object category. We evaluate VLFM in photo-realistic environments from the Gibson, Habitat-Matterport 3D (HM3D), and Matterport 3D (MP3D) datasets within the Habitat simulator. Remarkably, VLFM achieves state-of-the-art results on all three datasets as measured by success weighted by path length (SPL) for the Object Goal Navigation task. Furthermore, we show that VLFM's zero-shot nature enables it to be readily deployed on real-world robots such as the Boston Dynamics Spot mobile manipulation platform. We deploy VLFM on Spot and demonstrate its capability to efficiently navigate to target objects within an office building in the real world, without any prior knowledge of the environment. The accomplishments of VLFM underscore the promising potential of vision-language models in advancing the field of semantic navigation.
+> Этот репозиторий — **модифицированная копия** [rai-opensource/vlfm](https://github.com/rai-opensource/vlfm)
+> (commit `584ed56008754fde7997d904983607def8328322`, лицензия и авторство оригинала сохранены).
+> Оригинальный README: [`README_UPSTREAM.md`](README_UPSTREAM.md). Точный список изменений: [`CHANGES.md`](CHANGES.md);
+> патч, применимый к оригиналу: [`reports/final_report/source_changes.patch`](reports/final_report/source_changes.patch).
 
-## :hammer_and_wrench: Installation
+**Отчёт:** [`reports/final_report/REPORT.md`](reports/final_report/REPORT.md) · **Инструкция воспроизведения:**
+[`reports/final_report/REPRODUCIBILITY.md`](reports/final_report/REPRODUCIBILITY.md)
 
-### Getting Started
-Create the conda environment:
+## Результаты (одна сцена MP3D `17DRP5sb8fy`, split train, 50 эпизодов на запуск)
+
+| Запуск | SR [95% ДИ] | SPL | Комментарий |
+|---|---|---|---|
+| VLFM (три независимых запуска) | 0.46 / 0.48 / 0.48 | 0.280 / 0.298 / 0.297 | разброс между запусками 1–2 эпизода |
+| Greedy frontier (ближайший frontier, без VLM) | 0.46 [0.33; 0.60] | 0.279 | от VLFM не отличим: Макнемар p = 1.0 |
+| CAFS (штраф за низкую локальную уверенность) | 0.40 [0.28; 0.54] | 0.255 | хуже VLFM по SPL (ΔSPL −0.043, интервал не включает 0) |
+| VLFM + шум позы: умеренный / сильный | 0.18 / 0.06 | 0.128 / 0.049 | неудачи «цель не обнаружена»: 3 → 27 из 41 |
+| OracleFBE (исследование по данным симулятора) | 0.14 [0.07; 0.26] | 0.103 | аномально низкая доля обнаружений, см. отчёт |
+
+Полные таблицы с доверительными интервалами и парными тестами: [`reports/final_report/tables/ALL_TABLES.md`](reports/final_report/tables/ALL_TABLES.md).
+
+**Область применимости.** Это не оценка на validation-наборе HM3D/MP3D и не воспроизведение чисел статьи. Одна сцена и n = 50 дают
+доверительный интервал SR около ±0.13. Не выполнено: ≥100 эпизодов HM3D val (доступ к данным не получен), среднее время шага,
+малые уровни шума и разбор шума по компонентам, повторы по seed шума (инструмент для них готов, см. ниже).
+
+## Что добавлено к оригиналу
+
+* **Шум оценки позы** (`HabitatMixin._cache_observations`): белый шум + дрейф по x, y и курсу; seed привязан к эпизоду; симулятор получает истинную позу.
+* **`GreedyFrontierPolicy`** — ближайший frontier по собственной карте политики, без семантики.
+* **`HabitatITMPolicyV2ConfidenceAware`** (CAFS) — штраф `λ·(1 − confidence_local)` к ценности frontier.
+* Скрипты запуска, анализа и построения таблиц (`scripts/`), результаты и отчёт (`reports/`).
+
+## Структура
+
+```
+vlfm/                      исходный код VLFM + изменения (см. CHANGES.md)
+scripts/
+  reproduce_vlfm_50ep.sh   VLFM, 50 эпизодов
+  reproduce_greedy_50ep.sh Greedy frontier, 50 эпизодов
+  run_cafs_50ep.sh         CAFS без шума;  run_cafs_moderate_50ep.sh — CAFS при умеренном шуме
+  run_noise_experiment.sh  политика × уровень шума, сохраняет построчные результаты   <- новое
+  analyze_vlfm_episodes.py сводка по JSON эпизодов -> CSV
+  make_tables.py           все таблицы и графики отчёта из CSV                        <- новое
+  update_checksums.sh      пересчёт artifact_checksums.sha256 и video_checksums.sha256 <- новое
+reports/
+  final_report/            REPORT.md, REPRODUCIBILITY.md, source_changes.patch (полный), vlfm_episodes.csv, tables/,
+                           videos/, extra_materials/ (видео, кадры, логи), source_snapshot/ (снимок версий и конфигурации от 22.10), *.sha256
+  diagnostics/             парные CSV (VLFM/Greedy), причины неудач при умеренном шуме
+  cafs_50ep_*/             результаты CAFS
+  repro_snapshot_2026-10-22/  агрегаты основного прогона VLFM и OracleFBE
+  reproduction/            environment.yml, requirements-freeze.txt
+```
+
+## Быстрый старт
+
+Подробно — в [`REPRODUCIBILITY.md`](reports/final_report/REPRODUCIBILITY.md). Кратко (окружение `vlfm_habitat`, данные и веса на месте):
+
 ```bash
-conda_env_name=vlfm
-conda create -n $conda_env_name python=3.9 -y
-conda activate $conda_env_name
-pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
-pip install git+https://github.com/IDEA-Research/GroundingDINO.git@eeba084341aaa454ce13cb32fa7fd9282fc73a67 salesforce-lavis==1.0.2
-```
-If you are using habitat and are doing simulation experiments, install this repo into your env with the following:
-```bash
-pip install -e .[habitat]
-```
-If you are using the Spot robot, install this repo into your env with the following:
-```bash
-pip install -e .[reality]
-```
-#### [Whether you're using conda or not]
-Clone the following repo within this one (simply cloning will suffice):
-```bash
-git clone git@github.com:WongKinYiu/yolov7.git
+conda activate vlfm_habitat
+bash scripts/launch_vlm_servers.sh          # в отдельном терминале, дождаться запуска серверов
+
+bash scripts/reproduce_vlfm_50ep.sh         # VLFM
+bash scripts/reproduce_greedy_50ep.sh       # Greedy frontier
+bash scripts/run_cafs_50ep.sh               # CAFS
+
+# шум локализации: уровень, политика (vlfm|cafs|greedy), число эпизодов
+bash scripts/run_noise_experiment.sh moderate vlfm 50
+bash scripts/run_noise_experiment.sh strong   vlfm 50
+bash scripts/run_noise_experiment.sh small    vlfm 50     # новый малый уровень (ещё не запускался)
+DRY_RUN=1 bash scripts/run_noise_experiment.sh strong cafs 20   # только показать команду
+
+python scripts/make_tables.py               # перестроить таблицы и графики отчёта
 ```
 
-## :dart: Downloading the HM3D dataset
+Уровни шума: `nominal`, `small`, `moderate`, `strong`, а также `moderate_xy_only`, `moderate_yaw_only`,
+`moderate_white_only`, `moderate_drift_only` (разбор по осям и по типу шума).
 
-### Matterport
-First, set the following variables during installation (don't need to put in .bashrc):
-```bash
-MATTERPORT_TOKEN_ID=<FILL IN FROM YOUR ACCOUNT INFO IN MATTERPORT>
-MATTERPORT_TOKEN_SECRET=<FILL IN FROM YOUR ACCOUNT INFO IN MATTERPORT>
-DATA_DIR=</path/to/vlfm/data>
+## Известные проблемы
 
-# Link to the HM3D ObjectNav episodes dataset, listed here:
-# https://github.com/facebookresearch/habitat-lab/blob/main/DATASETS.md#task-datasets
-# From the above page, locate the link to the HM3D ObjectNav dataset.
-# Verify that it is the same as the next two lines.
-HM3D_OBJECTNAV=https://dl.fbaipublicfiles.com/habitat/data/datasets/objectnav/hm3d/v1/objectnav_hm3d_v1.zip
-```
+* Построчные результаты основного прогона VLFM и прогонов шума nominal/moderate/strong не сохранены; в репозитории только агрегаты.
+  Перезапуск через `run_noise_experiment.sh` закрывает пробел.
+* Папка `reports/cafs_50ep_20261102_165339` содержит метрики, разобранные из имён видеофайлов, с SR 0.48 (как у VLFM, а не у CAFS, SR 0.40) — проверьте, что это за прогон, и при необходимости переименуйте.
+* Видео, ключевые кадры, логи Hydra и tensorboard для 10 эпизодов лежат в `reports/final_report/extra_materials/` (и ещё два видео в `reports/final_report/videos/`). Эти каталоги перечислены в `.gitignore`, поэтому новые артефакты добавляйте через `git add -f`. После правок документов пересчитайте контрольные суммы: `bash scripts/update_checksums.sh`.
+* Логи и конфигурации содержат абсолютные пути вида `/home/<пользователь>/...`, а имена tensorboard-файлов — имя машины; при желании их можно обезличить перед публикацией.
 
-### Clone and install habitat-lab, then download datasets
-*Ensure that the correct conda environment is activated!!*
-```bash
-# Download HM3D 3D scans (scenes_dataset)
-python -m habitat_sim.utils.datasets_download \
-  --username $MATTERPORT_TOKEN_ID --password $MATTERPORT_TOKEN_SECRET \
-  --uids hm3d_train_v0.2 \
-  --data-path $DATA_DIR &&
-python -m habitat_sim.utils.datasets_download \
-  --username $MATTERPORT_TOKEN_ID --password $MATTERPORT_TOKEN_SECRET \
-  --uids hm3d_val_v0.2 \
-  --data-path $DATA_DIR &&
+## Лицензия и ссылки
 
-# Download HM3D ObjectNav dataset episodes
-wget $HM3D_OBJECTNAV &&
-unzip objectnav_hm3d_v1.zip &&
-mkdir -p $DATA_DIR/datasets/objectnav/hm3d  &&
-mv objectnav_hm3d_v1 $DATA_DIR/datasets/objectnav/hm3d/v1 &&
-rm objectnav_hm3d_v1.zip
-```
-
-## :weight_lifting: Downloading weights for various models
-The weights for MobileSAM, GroundingDINO, and PointNav must be saved to the `data/` directory. The weights can be downloaded from the following links:
-- `mobile_sam.pt`:  https://github.com/ChaoningZhang/MobileSAM
-- `groundingdino_swint_ogc.pth`: https://github.com/IDEA-Research/GroundingDINO
-- `yolov7-e6e.pt`: https://github.com/WongKinYiu/yolov7
-- `pointnav_weights.pth`: included inside the [data](data) subdirectory
-
-## :arrow_forward: Evaluation within Habitat
-To run evaluation, various models must be loaded in the background first. This only needs to be done once by running the following command:
-```bash
-./scripts/launch_vlm_servers.sh
-```
-(You may need to run `chmod +x` on this file first.)
-This command will create a tmux session that will start loading the various models used for VLFM and serving them through `flask`. When you are done, be sure to kill the tmux session to free up your GPU.
-
-Run the following to evaluate on the HM3D dataset:
-```bash
-python -m vlfm.run
-```
-To evaluate on MP3D, run the following:
-```bash
-python -m vlfm.run habitat.dataset.data_path=data/datasets/objectnav/mp3d/val/val.json.gz
-```
-
-## :newspaper: License
-
-VLFM is released under the [MIT License](LICENSE). This code was produced as part of Naoki Yokoyama's internship at the Boston Dynamics AI Institute in Summer 2023 and is provided "as is" without active maintenance. For questions, please contact [Naoki Yokoyama](http://naoki.io) or [Jiuguang Wang](https://www.robo.guru).
-
-## :black_nib: Citation
-
-If you use VLFM in your research, please use the following BibTeX entry.
-
-```
-@inproceedings{yokoyama2024vlfm,
-  title={VLFM: Vision-Language Frontier Maps for Zero-Shot Semantic Navigation},
-  author={Naoki Yokoyama and Sehoon Ha and Dhruv Batra and Jiuguang Wang and Bernadette Bucher},
-  booktitle={International Conference on Robotics and Automation (ICRA)},
-  year={2024}
-}
-```
+Лицензия оригинала (MIT, Boston Dynamics AI Institute) сохранена в `LICENSE`. Статья: Yokoyama et al., *VLFM: Vision-Language Frontier Maps
+for Zero-Shot Semantic Navigation*, ICRA 2024, <https://arxiv.org/abs/2312.03275>.

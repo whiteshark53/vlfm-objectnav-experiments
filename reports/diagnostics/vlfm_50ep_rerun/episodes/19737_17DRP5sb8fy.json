@@ -1,0 +1,22 @@
+{
+    "episode_id": "19737",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "false_positive",
+    "distance_to_goal": 3.881972074508667,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.32547121491859615,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "towel",
+    "gps": "[    -2.4988     -2.9144]",
+    "yaw": 30.00001791029898,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 12.69%",
+    "start_yaw": 1.7451918125152588
+}

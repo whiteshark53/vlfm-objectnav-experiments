@@ -1,0 +1,341 @@
+diff --git a/vlfm/policy/base_objectnav_policy.py b/vlfm/policy/base_objectnav_policy.py
+index 196114b..00cfedf 100644
+--- a/vlfm/policy/base_objectnav_policy.py
++++ b/vlfm/policy/base_objectnav_policy.py
+@@ -391,6 +391,13 @@ class VLFMConfig:
+     non_coco_threshold: float = 0.4
+     agent_radius: float = 0.18
+ 
++    # Localization-error experiment. All values are in meters/degrees.
++    pose_noise_xy_std: float = 0.0
++    pose_noise_yaw_std_deg: float = 0.0
++    pose_drift_xy_std_per_step: float = 0.0
++    pose_drift_yaw_std_deg_per_step: float = 0.0
++    pose_noise_seed: int = 20261029
++
+     @classmethod  # type: ignore
+     @property
+     def kwaarg_names(cls) -> List[str]:
+diff --git a/vlfm/policy/habitat_policies.py b/vlfm/policy/habitat_policies.py
+index f564f2e..f2762a0 100644
+--- a/vlfm/policy/habitat_policies.py
++++ b/vlfm/policy/habitat_policies.py
+@@ -23,7 +23,7 @@ from vlfm.vlm.grounding_dino import ObjectDetections
+ 
+ from ..mapping.obstacle_map import ObstacleMap
+ from .base_objectnav_policy import BaseObjectNavPolicy, VLFMConfig
+-from .itm_policy import ITMPolicy, ITMPolicyV2, ITMPolicyV3
++from .itm_policy import ITMPolicy, ITMPolicyV2, ITMPolicyV3, ConfidenceAwareITMPolicyV2
+ 
+ HM3D_ID_TO_NAME = ["chair", "bed", "potted plant", "toilet", "tv", "couch"]
+ MP3D_ID_TO_NAME = [
+@@ -79,10 +79,25 @@ class HabitatMixin:
+         camera_fov: float,
+         image_width: int,
+         dataset_type: str = "hm3d",
++        pose_noise_xy_std: float = 0.0,
++        pose_noise_yaw_std_deg: float = 0.0,
++        pose_drift_xy_std_per_step: float = 0.0,
++        pose_drift_yaw_std_deg_per_step: float = 0.0,
++        pose_noise_seed: int = 20261029,
+         *args: Any,
+         **kwargs: Any,
+     ) -> None:
+         super().__init__(*args, **kwargs)
++        self._pose_noise_xy_std = float(pose_noise_xy_std)
++        self._pose_noise_yaw_std = float(np.deg2rad(pose_noise_yaw_std_deg))
++        self._pose_drift_xy_std = float(pose_drift_xy_std_per_step)
++        self._pose_drift_yaw_std = float(np.deg2rad(pose_drift_yaw_std_deg_per_step))
++        self._pose_noise_seed = int(pose_noise_seed)
++        self._pose_episode_index = -1
++        self._pose_rng = np.random.default_rng(self._pose_noise_seed)
++        self._pose_drift_xy = np.zeros(2, dtype=np.float64)
++        self._pose_drift_yaw = 0.0
++
+         self._camera_height = camera_height
+         self._min_depth = min_depth
+         self._max_depth = max_depth
+@@ -113,6 +128,9 @@ class HabitatMixin:
+             kwargs["dataset_type"] = "hm3d"
+         elif "mp3d" in config.habitat.dataset.data_path:
+             kwargs["dataset_type"] = "mp3d"
++        elif "hssd-hab" in config.habitat.dataset.data_path:
++            # HSSD smoke-test compatibility: use VLFM's six-category mapping.
++            kwargs["dataset_type"] = "hm3d"
+         else:
+             raise ValueError("Dataset type could not be inferred from habitat config")
+ 
+@@ -157,6 +175,12 @@ class HabitatMixin:
+         parent_cls._reset()
+         self._start_yaw = None
+ 
++        self._pose_episode_index += 1
++        episode_seed = self._pose_noise_seed + self._pose_episode_index
++        self._pose_rng = np.random.default_rng(episode_seed)
++        self._pose_drift_xy = np.zeros(2, dtype=np.float64)
++        self._pose_drift_yaw = 0.0
++
+     def _get_policy_info(self, detections: ObjectDetections) -> Dict[str, Any]:
+         """Get policy info for logging"""
+         parent_cls: BaseObjectNavPolicy = super()  # type: ignore
+@@ -181,12 +205,38 @@ class HabitatMixin:
+         rgb = observations["rgb"][0].cpu().numpy()
+         depth = observations["depth"][0].cpu().numpy()
+         x, y = observations["gps"][0].cpu().numpy()
+-        camera_yaw = observations["compass"][0].cpu().item()
++        camera_yaw = float(observations["compass"][0].cpu().item())
+         depth = filter_depth(depth.reshape(depth.shape[:2]), blur_type=None)
+-        # Habitat GPS makes west negative, so flip y
+-        camera_position = np.array([x, -y, self._camera_height])
+-        robot_xy = camera_position[:2]
+-        tf_camera_to_episodic = xyz_yaw_to_tf_matrix(camera_position, camera_yaw)
++
++        # Convert Habitat GPS coordinates to the episodic XY frame.
++        true_xy = np.array([x, -y], dtype=np.float64)
++
++        # Slowly varying random-walk drift, accumulated within this episode.
++        self._pose_drift_xy += self._pose_rng.normal(
++            0.0, self._pose_drift_xy_std, size=2
++        )
++        self._pose_drift_yaw += float(
++            self._pose_rng.normal(0.0, self._pose_drift_yaw_std)
++        )
++
++        # Independent white measurement noise.
++        xy_measurement_noise = self._pose_rng.normal(
++            0.0, self._pose_noise_xy_std, size=2
++        )
++        yaw_measurement_noise = float(
++            self._pose_rng.normal(0.0, self._pose_noise_yaw_std)
++        )
++
++        # The policy receives only the corrupted estimated pose.
++        robot_xy = true_xy + self._pose_drift_xy + xy_measurement_noise
++        estimated_yaw = camera_yaw + self._pose_drift_yaw + yaw_measurement_noise
++        estimated_yaw = float(np.arctan2(np.sin(estimated_yaw), np.cos(estimated_yaw)))
++
++        camera_position = np.array(
++            [robot_xy[0], robot_xy[1], self._camera_height],
++            dtype=np.float64,
++        )
++        tf_camera_to_episodic = xyz_yaw_to_tf_matrix(camera_position, estimated_yaw)
+ 
+         self._obstacle_map: ObstacleMap
+         if self._compute_frontiers:
+@@ -200,7 +250,7 @@ class HabitatMixin:
+                 self._camera_fov,
+             )
+             frontiers = self._obstacle_map.frontiers
+-            self._obstacle_map.update_agent_traj(robot_xy, camera_yaw)
++            self._obstacle_map.update_agent_traj(robot_xy, estimated_yaw)
+         else:
+             if "frontier_sensor" in observations:
+                 frontiers = observations["frontier_sensor"][0].cpu().numpy()
+@@ -211,7 +261,7 @@ class HabitatMixin:
+             "frontier_sensor": frontiers,
+             "nav_depth": observations["depth"],  # for pointnav
+             "robot_xy": robot_xy,
+-            "robot_heading": camera_yaw,
++            "robot_heading": estimated_yaw,
+             "object_map_rgbd": [
+                 (
+                     rgb,
+@@ -237,6 +287,25 @@ class HabitatMixin:
+         }
+ 
+ 
++@baseline_registry.register_policy
++class GreedyFrontierPolicy(HabitatMixin, BaseObjectNavPolicy):
++    """Select the nearest available frontier without semantic scoring."""
++
++    def _explore(self, observations: TensorDict) -> Tensor:
++        frontiers = self._observations_cache["frontier_sensor"]
++
++        if len(frontiers) == 0 or np.array_equal(frontiers, np.zeros((1, 2))):
++            print("No frontiers found during exploration, stopping.")
++            return self._stop_action
++
++        robot_xy = self._observations_cache["robot_xy"]
++        distances = np.linalg.norm(frontiers[:, :2] - robot_xy[None, :2], axis=1)
++        best_frontier = frontiers[int(np.argmin(distances)), :2]
++
++        print(f"Greedy frontier distance: {np.min(distances):.3f} m")
++        return self._pointnav(best_frontier, stop=False)
++
++
+ @baseline_registry.register_policy
+ class OracleFBEPolicy(HabitatMixin, BaseObjectNavPolicy):
+     def _explore(self, observations: TensorDict) -> Tensor:
+@@ -276,6 +345,11 @@ class HabitatITMPolicyV3(HabitatMixin, ITMPolicyV3):
+     pass
+ 
+ 
++@baseline_registry.register_policy
++class HabitatITMPolicyV2ConfidenceAware(HabitatMixin, ConfidenceAwareITMPolicyV2):
++    pass
++
++
+ @dataclass
+ class VLFMPolicyConfig(VLFMConfig, PolicyConfig):
+     pass
+diff --git a/vlfm/policy/itm_policy.py b/vlfm/policy/itm_policy.py
+index 878a124..c786d93 100644
+--- a/vlfm/policy/itm_policy.py
++++ b/vlfm/policy/itm_policy.py
+@@ -267,6 +267,92 @@ class ITMPolicyV2(BaseITMPolicy):
+         return sorted_frontiers, sorted_values
+ 
+ 
++
++class ConfidenceAwareITMPolicyV2(ITMPolicyV2):
++    """ITMPolicyV2 with local geometric-confidence-aware frontier ranking."""
++
++    confidence_penalty = 0.15
++
++    def _sort_frontiers_by_value(
++        self, observations: "TensorDict", frontiers: np.ndarray
++    ) -> Tuple[np.ndarray, List[float]]:
++        value_map = self._value_map
++        sorted_frontiers, semantic_values = value_map.sort_waypoints(
++            frontiers, 0.5
++        )
++
++        confidence_map = value_map._map
++        radius_px = int(0.5 * value_map.pixels_per_meter)
++        map_shape = value_map._value_map.shape
++
++        adjusted_scores = []
++
++        for point, semantic_value in zip(sorted_frontiers, semantic_values):
++            x, y = point[:2]
++
++            px = int(-x * value_map.pixels_per_meter) + value_map._episode_pixel_origin[0]
++            py = int(-y * value_map.pixels_per_meter) + value_map._episode_pixel_origin[1]
++
++            # ValueMap coordinates are (row, column), not (x, y).
++            center_row = map_shape[0] - px
++            center_col = py
++
++            row0 = max(0, center_row - radius_px)
++            row1 = min(confidence_map.shape[0], center_row + radius_px + 1)
++            col0 = max(0, center_col - radius_px)
++            col1 = min(confidence_map.shape[1], center_col + radius_px + 1)
++
++            if row0 >= row1 or col0 >= col1:
++                local_confidence = 0.0
++            else:
++                rows, cols = np.ogrid[row0:row1, col0:col1]
++                disk = (
++                    (rows - center_row) ** 2
++                    + (cols - center_col) ** 2
++                    <= radius_px ** 2
++                )
++                local_values = confidence_map[row0:row1, col0:col1]
++                valid = disk & (local_values > 0)
++
++                local_confidence = (
++                    float(np.mean(local_values[valid]))
++                    if np.any(valid)
++                    else 0.0
++                )
++
++            score = float(semantic_value) - self.confidence_penalty * (
++                1.0 - local_confidence
++            )
++            adjusted_scores.append(score)
++
++        # Diagnostics only: compare the original semantic winner with CAFS.
++        semantic_winner = sorted_frontiers[0].copy() if len(sorted_frontiers) else None
++        order = np.argsort(-np.asarray(adjusted_scores))
++        ranked_frontiers = sorted_frontiers[order]
++        ranked_scores = [adjusted_scores[i] for i in order]
++
++        if not hasattr(self, "_cafs_diag_calls"):
++            self._cafs_diag_calls = 0
++            self._cafs_diag_rank_changes = 0
++
++        self._cafs_diag_calls += 1
++        if (
++            semantic_winner is not None
++            and len(ranked_frontiers)
++            and not np.allclose(semantic_winner[:2], ranked_frontiers[0][:2])
++        ):
++            self._cafs_diag_rank_changes += 1
++            print(
++                "CAFS_RANK_CHANGE "
++                f"semantic={semantic_winner[:2].tolist()} "
++                f"cafs={ranked_frontiers[0][:2].tolist()} "
++                f"calls={self._cafs_diag_calls} "
++                f"changes={self._cafs_diag_rank_changes}"
++            )
++
++        return ranked_frontiers, ranked_scores
++
++
+ class ITMPolicyV3(ITMPolicyV2):
+     def __init__(self, exploration_thresh: float, *args: Any, **kwargs: Any) -> None:
+         super().__init__(*args, **kwargs)
+diff --git a/vlfm/policy/utils/pointnav_policy.py b/vlfm/policy/utils/pointnav_policy.py
+index 517d067..d569460 100644
+--- a/vlfm/policy/utils/pointnav_policy.py
++++ b/vlfm/policy/utils/pointnav_policy.py
+@@ -171,14 +171,14 @@ def load_pointnav_policy(file_path: str) -> PointNavResNetTensorOutputPolicy:
+             pointnav_policy.net = PointNavResNetNet(discrete_actions=True, no_fwd_dict=True)
+             state_dict = torch.load(file_path + ".state_dict", map_location="cpu")
+         else:
+-            ckpt_dict = torch.load(file_path, map_location="cpu")
++            ckpt_dict = torch.load(file_path, map_location="cpu", weights_only=False)
+             pointnav_policy = PointNavResNetTensorOutputPolicy.from_config(ckpt_dict["config"], obs_space, action_space)
+             state_dict = ckpt_dict["state_dict"]
+         pointnav_policy.load_state_dict(state_dict)
+         return pointnav_policy
+ 
+     else:
+-        ckpt_dict = torch.load(file_path, map_location="cpu")
++        ckpt_dict = torch.load(file_path, map_location="cpu", weights_only=False)
+         pointnav_policy = PointNavResNetTensorOutputPolicy()
+         current_state_dict = pointnav_policy.state_dict()
+         # Let old checkpoints work with new code
+diff --git a/vlfm/vlm/server_wrapper.py b/vlfm/vlm/server_wrapper.py
+index 344057a..153283f 100644
+--- a/vlfm/vlm/server_wrapper.py
++++ b/vlfm/vlm/server_wrapper.py
+@@ -133,7 +133,7 @@ def _send_request(url: str, **kwargs: Any) -> dict:
+         start_time = time.time()
+         while True:
+             try:
+-                resp = requests.post(url, headers=headers, json=payload, timeout=1)
++                resp = requests.post(url, headers=headers, json=payload, timeout=30)
+                 if resp.status_code == 200:
+                     result = resp.json()
+                     break
+diff --git a/.gitignore b/.gitignore
+index 7501378..3c03855 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -186,3 +186,25 @@ habitat-lab/
+ GroundingDINO/
+ __pycache__/
+ *.pyc
++
++# Local VLFM experiment artifacts
++data/datasets/
++data/scene_datasets/
++data/versioned_data/
++data/*.pth
++data/*.pt
++MobileSAM/
++yolov7/
++GroundingDINO/
++outputs/
++tb/
++wandb/
++reports/**/videos/
++reports/**/final_frames/
++reports/**/frames/
++reports/**/logs/
++*.bak
++*.bak_*
++*.tar.gz
++*.tar.gz.part_*
++traced_model.pt

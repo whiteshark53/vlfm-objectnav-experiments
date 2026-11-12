@@ -1,0 +1,22 @@
+{
+    "episode_id": "27442",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "never_saw_target_did_not_travel_stairs_feasible",
+    "distance_to_goal": 6.431936264038086,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.0,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "sink",
+    "gps": "[     3.7389       3.365]",
+    "yaw": -150.00001100431945,
+    "target_detected": false,
+    "stop_called": false,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 11.94%",
+    "start_yaw": 1.5888419151306152
+}

@@ -1,0 +1,22 @@
+{
+    "episode_id": "19572",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "bad_stop_true_positive",
+    "distance_to_goal": 0.14654193818569183,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.6453964938209295,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "towel",
+    "gps": "[    -4.4229      1.8225]",
+    "yaw": -89.99998884409983,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 12.74%",
+    "start_yaw": -0.11891040951013565
+}

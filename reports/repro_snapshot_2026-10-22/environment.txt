@@ -1,0 +1,14 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+Python: 3.9.23 | packaged by conda-forge | (main, Jun  4 2025, 17:57:12) 
+[GCC 13.3.0]
+PyTorch: 2.8.0+cu128
+CUDA available: True
+NumPy: 1.26.4
+OpenCV: 4.5.5
+Habitat-Sim: 0.2.4
+Gym: 0.23.0
+Habitat-Baselines: 0.2.4
+GPU: NVIDIA GeForce RTX 5060 Ti
+CUDA runtime: 12.8

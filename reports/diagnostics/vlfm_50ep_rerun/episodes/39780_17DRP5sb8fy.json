@@ -1,0 +1,22 @@
+{
+    "episode_id": "39780",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "false_positive",
+    "distance_to_goal": 3.555563449859619,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.0,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "couch",
+    "gps": "[   0.096964     -4.9647]",
+    "yaw": 90.00000250447816,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 20.69%",
+    "start_yaw": 1.0387983322143555
+}

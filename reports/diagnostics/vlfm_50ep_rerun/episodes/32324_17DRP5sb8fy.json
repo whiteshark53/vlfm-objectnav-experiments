@@ -1,0 +1,22 @@
+{
+    "episode_id": "32324",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "false_positive",
+    "distance_to_goal": 3.828549385070801,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.19566054100883512,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "stool",
+    "gps": "[    0.59151    -0.77452]",
+    "yaw": 60.000001669652114,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 16.35%",
+    "start_yaw": 1.3206918239593506
+}

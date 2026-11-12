@@ -1,0 +1,22 @@
+{
+    "episode_id": "49835",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "never_saw_target_did_not_travel_stairs_feasible",
+    "distance_to_goal": 0.3109683394432068,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.18916621501787614,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "framed photograph",
+    "gps": "[    -3.1047     -4.0489]",
+    "yaw": -9.841323794925816e-06,
+    "target_detected": false,
+    "stop_called": false,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 12.07%",
+    "start_yaw": 3.1021902561187744
+}

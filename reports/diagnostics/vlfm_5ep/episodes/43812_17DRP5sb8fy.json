@@ -1,0 +1,19 @@
+{
+    "episode_id": "43812",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.038121502846479416,
+    "success": 1.0,
+    "spl": 0.7425111283194004,
+    "soft_spl": 0.7340396897224309,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "chair",
+    "gps": "[     -1.183      -2.183]",
+    "yaw": 2.7297637660626883e-05,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object"
+    ]
+}

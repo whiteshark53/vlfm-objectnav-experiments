@@ -1,0 +1,22 @@
+{
+    "episode_id": "2895",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "false_negative",
+    "distance_to_goal": 0.9012444019317627,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.054758348596187285,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "nightstand",
+    "gps": "[     3.3364      1.2241]",
+    "yaw": -60.00001533003045,
+    "target_detected": false,
+    "stop_called": false,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 11.14%",
+    "start_yaw": 2.466334581375122
+}

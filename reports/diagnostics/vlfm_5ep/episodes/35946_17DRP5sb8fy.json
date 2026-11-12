@@ -1,0 +1,22 @@
+{
+    "episode_id": "35946",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.021422063931822777,
+    "success": 1.0,
+    "spl": 0.6045797986663989,
+    "soft_spl": 0.6018156625275314,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "cabinet",
+    "gps": "[     3.2655       3.991]",
+    "yaw": -60.000001669652114,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 16.22%",
+    "start_yaw": -1.530177354812622
+}

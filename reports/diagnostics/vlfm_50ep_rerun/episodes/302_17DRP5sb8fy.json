@@ -1,0 +1,22 @@
+{
+    "episode_id": "302",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.0005277354503050447,
+    "success": 1.0,
+    "spl": 0.7661236019613489,
+    "soft_spl": 0.7660005724772474,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "bed",
+    "gps": "[     2.4863     -2.5743]",
+    "yaw": -30.000000834826057,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 22.67%",
+    "start_yaw": 0.40214550495147705
+}

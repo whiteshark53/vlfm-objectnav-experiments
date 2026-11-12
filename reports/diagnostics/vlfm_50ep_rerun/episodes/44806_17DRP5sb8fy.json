@@ -1,0 +1,22 @@
+{
+    "episode_id": "44806",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.0036582443863153458,
+    "success": 1.0,
+    "spl": 0.665985176794885,
+    "soft_spl": 0.6638947552760402,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "chair",
+    "gps": "[     -1.366     0.93301]",
+    "yaw": -120.00001699968256,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 31.23%",
+    "start_yaw": -2.3848025798797607
+}

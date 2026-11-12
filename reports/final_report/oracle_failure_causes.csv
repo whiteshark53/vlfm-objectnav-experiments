@@ -1,0 +1,4 @@
+failure_cause,count
+never_saw_target_did_not_travel_stairs_feasible,40
+false_positive,2
+false_negative,1

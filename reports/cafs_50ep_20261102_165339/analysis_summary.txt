@@ -1,0 +1,39 @@
+Videos parsed: 50
+Failure labels parsed from log: 26
+
+success: n=50, mean=0.4800, min=0.0000, max=1.0000
+distance_to_goal: n=50, mean=2.0812, min=0.0000, max=11.8400
+target_detected: n=50, mean=0.7600, min=0.0000, max=1.0000
+stop_called: n=50, mean=0.7600, min=0.0000, max=1.0000
+
+Failure causes:
+  false_positive: 12
+  false_negative: 8
+  bad_stop_true_positive: 3
+  never_saw_target_did_not_travel_stairs_feasible: 3
+
+Episodes without a parsed failure label:
+  10492
+  11251
+  17469
+  26213
+  27356
+  302
+  34060
+  35329
+  35946
+  3792
+  3966
+  43210
+  43812
+  44070
+  44136
+  44806
+  45655
+  47848
+  47908
+  48617
+  48827
+  5926
+  7547
+  8746

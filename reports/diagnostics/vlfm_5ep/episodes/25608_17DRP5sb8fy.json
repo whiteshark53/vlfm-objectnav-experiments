@@ -1,0 +1,22 @@
+{
+    "episode_id": "25608",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "false_negative",
+    "distance_to_goal": 11.836241722106934,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.0,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "shower",
+    "gps": "[     4.4752      7.4869]",
+    "yaw": -29.999987174447714,
+    "target_detected": false,
+    "stop_called": false,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 12.03%",
+    "start_yaw": -0.6297515034675598
+}

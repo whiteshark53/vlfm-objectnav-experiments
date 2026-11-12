@@ -1,0 +1,22 @@
+{
+    "episode_id": "7547",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.044198762625455856,
+    "success": 1.0,
+    "spl": 0.6928059403512363,
+    "soft_spl": 0.6847698067214669,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "pillow",
+    "gps": "[       -0.5     -3.9821]",
+    "yaw": 29.999987174447714,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 12.72%",
+    "start_yaw": -2.021841526031494
+}

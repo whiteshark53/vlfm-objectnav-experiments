@@ -1,0 +1,8 @@
+Date: 2026-11-04T13:43:05+03:00
+Git commit: 33b1f084e00a68738558c28f642d4e2d616bcfe6
+Conda environment: vlfm_habitat
+Python 3.9.23
+torch: 2.8.0+cu128
+CUDA: True
+numpy: 1.26.4
+opencv: 4.5.5

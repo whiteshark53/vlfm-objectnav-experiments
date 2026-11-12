@@ -1,0 +1,22 @@
+{
+    "episode_id": "36992",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "never_saw_target_did_not_travel_stairs_feasible",
+    "distance_to_goal": 3.11850905418396,
+    "success": 0.0,
+    "spl": 0.0,
+    "soft_spl": 0.0,
+    "distance_to_goal_reward": -0.15542912483215332,
+    "traveled_stairs": 0,
+    "target_object": "counter",
+    "gps": "[      3.799     -8.8619]",
+    "yaw": -1.4137541743111878e-05,
+    "target_detected": false,
+    "stop_called": false,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 11.91%",
+    "start_yaw": 0.45807692408561707
+}

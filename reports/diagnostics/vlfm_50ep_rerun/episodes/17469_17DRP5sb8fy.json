@@ -1,0 +1,22 @@
+{
+    "episode_id": "17469",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.04143211618065834,
+    "success": 1.0,
+    "spl": 0.12543515650084117,
+    "soft_spl": 0.1246678950996158,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "table",
+    "gps": "[     -4.674     -10.328]",
+    "yaw": -150.00001100431945,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 12.41%",
+    "start_yaw": -0.15445341169834137
+}

@@ -1,0 +1,17 @@
+Date: 2026-11-03T13:03:31+03:00
+Git commit: 584ed56008754fde7997d904983607def8328322
+Conda environment: vlfm_habitat
+Policy: HabitatITMPolicyV2ConfidenceAware
+Episodes: 50
+Dataset: MP3D train / 17DRP5sb8fy
+Pose noise: moderate
+pose_noise_xy_std: 0.1
+pose_noise_yaw_std_deg: 3.0
+pose_drift_xy_std_per_step: 0.005
+pose_drift_yaw_std_deg_per_step: 0.1
+pose_noise_seed: 20261029
+Python 3.9.23
+torch: 2.8.0+cu128
+CUDA: True
+numpy: 1.26.4
+opencv: 4.5.5

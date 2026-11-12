@@ -1,220 +1,103 @@
-# VLFM ObjectNav: инструкция воспроизведения
+# Инструкция воспроизведения
 
-## 1. Область применимости
+Область применимости: MP3D ObjectNav, сцена `17DRP5sb8fy`, split `train`, 50 эпизодов на запуск. Конфигурация промежуточной репликации;
+она не гарантирует совпадения с числами статьи и побитового повторения (между запусками VLFM наблюдался разброс в 1–2 эпизода).
 
-Инструкция описывает подготовку и повтор диагностического эксперимента VLFM на MP3D ObjectNav:
-- сцена `17DRP5sb8fy`;
-- split `train`;
-- 50 эпизодов;
-- политика `HabitatITMPolicyV2`.
-
-Это конфигурация промежуточного воспроизведения. Она не гарантирует совпадение результатов с оригинальной статьёй или точное повторение исторического порядка эпизодов.
-
-## 2. Репозиторий
+## 1. Код
 
 ```bash
-git clone https://github.com/rai-opensource/vlfm.git
-cd vlfm
+git clone <этот репозиторий> && cd <каталог>
+git rev-parse HEAD            # зафиксируйте commit в отчёте о запуске
+```
+
+Либо из оригинала с патчем (проверено: применяется к чистому commit без ошибок):
+
+```bash
+git clone https://github.com/rai-opensource/vlfm.git && cd vlfm
 git checkout 584ed56008754fde7997d904983607def8328322
+git apply /путь/к/reports/final_report/source_changes.patch
 ```
 
-Если репозиторий уже подготовлен, проверь ревизию:
+Содержание патча — в `CHANGES.md`. Среди прочего он включает `weights_only=False` в `torch.load` (PyTorch ≥ 2.6) и тайм-аут VLM-серверов 30 с.
+
+## 2. Окружение
+
+Использовалось: Ubuntu 22.04.5 (WSL2), Python 3.9.23, PyTorch 2.8.0+cu128, NumPy 1.26.4, OpenCV 4.5.5, Habitat-Sim 0.2.4,
+habitat-lab / habitat-baselines 0.2.420230405, Gym 0.23.0, NVIDIA RTX 5060 Ti 16 ГБ. Полный список: `reports/reproduction/environment.yml`
+и `reports/reproduction/requirements-freeze.txt`; снимок от 22 октября — `reports/final_report/source_snapshot/` (`pip_freeze.txt`, `conda_explicit.txt`, `git_commit.txt`, `git_status.txt`, конфигурация эксперимента, `model_checksums.sha256` для весов).
 
 ```bash
-git rev-parse HEAD
-git status --short
-```
-
-В текущем экспериментальном окружении использовались локальные изменения:
-- `torch.load(..., weights_only=False)` в `vlfm/policy/utils/pointnav_policy.py`;
-- HTTP timeout 30 секунд в `vlfm/vlm/server_wrapper.py`.
-
-Перед повторным запуском необходимо убедиться, что эти изменения присутствуют, если они требуются установленными версиями библиотек и VLM-серверов.
-
-## 3. Программное окружение
-
-Использованное окружение:
-
-```text
-Environment: vlfm_habitat
-Python: 3.9.23
-PyTorch: 2.8.0+cu128
-NumPy: 1.26.4
-OpenCV: 4.5.5
-Habitat-Sim: 0.2.4
-Habitat-Lab: 0.2.4
-Habitat-Baselines: 0.2.4
-Gym: 0.23.0
-```
-
-Активировать окружение:
-
-```bash
+conda env create -f reports/reproduction/environment.yml   # имя окружения: vlfm_habitat
 conda activate vlfm_habitat
 ```
 
-Проверить версии и CUDA:
+GPU Blackwell (sm_120) требует PyTorch со сборкой cu128; версии из README оригинала на ней не работают. В WSL2 GPU-рендеринг Habitat (EGL) не
+заработал, поэтому используется `habitat.simulator.habitat_sim_v0.gpu_device_id=-1` (программный рендеринг; на метрики влияния нет, время шага не сопоставимо с GPU).
+
+## 3. Данные и веса
+
+| Что | Куда | Откуда |
+|---|---|---|
+| MP3D ObjectNav v1 (эпизоды) | `data/datasets/objectnav/mp3d/v1/train/train.json.gz` | пакет ObjectNav для MP3D из Habitat |
+| Сцена `17DRP5sb8fy` | `data/scene_datasets/` | сцена из набора `mp3d_example` (остальные сцены MP3D выдаёт Matterport по заявке) |
+| PointNav | `data/pointnav_weights.pth` | входит в репозиторий оригинала |
+| MobileSAM, GroundingDINO, YOLOv7 | `data/mobile_sam.pt`, `data/groundingdino_swint_ogc.pth`, `data/yolov7-e6e.pt` | по инструкции README оригинала (`README_UPSTREAM.md`) |
+| Заглушка политики | `data/dummy_policy.pth` | `python -m vlfm.utils.generate_dummy_policy` |
+
+HM3D в экспериментах не использовался (доступ не получен). Проверьте число эпизодов и наличие сцены перед запуском.
+
+## 4. VLM-серверы
 
 ```bash
-python - <<'PY'
-import sys
-import torch
-import numpy
-import cv2
-import habitat_sim
-
-print("Python:", sys.version)
-print("PyTorch:", torch.__version__)
-print("CUDA available:", torch.cuda.is_available())
-print("NumPy:", numpy.__version__)
-print("OpenCV:", cv2.__version__)
-print("Habitat-Sim:", habitat_sim.__version__)
-PY
+bash scripts/launch_vlm_servers.sh      # отдельный терминал; дождаться загрузки GroundingDINO, BLIP-2 ITM, MobileSAM, YOLOv7
 ```
 
-Для фиксации фактического окружения:
+## 5. Эксперименты
+
+| Эксперимент | Команда |
+|---|---|
+| VLFM | `bash scripts/reproduce_vlfm_50ep.sh` |
+| Greedy frontier | `bash scripts/reproduce_greedy_50ep.sh` |
+| CAFS | `bash scripts/run_cafs_50ep.sh` |
+| CAFS при умеренном шуме | `bash scripts/run_cafs_moderate_50ep.sh` |
+| Шум: любой уровень × политика | `bash scripts/run_noise_experiment.sh LEVEL [vlfm\|cafs\|greedy] [N]` |
+
+Общие параметры: `habitat.seed=100`, `iterator_options.shuffle=True`, `max_episode_steps=500`, `test_episode_count=50`; параметры шума:
+
+| Уровень | σ xy, м | σ yaw, ° | дрейф xy, м/шаг | дрейф yaw, °/шаг |
+|---|---|---|---|---|
+| nominal | 0 | 0 | 0 | 0 |
+| small (не запускался) | 0.02 | 0.5 | 0.001 | 0.02 |
+| moderate | 0.10 | 3.0 | 0.005 | 0.1 |
+| strong | 0.25 | 8.0 | 0.015 | 0.3 |
+
+Базовый seed шума `pose_noise_seed = 20261029`; реальный seed эпизода = базовый + номер эпизода.
+
+JSON по эпизодам пишутся в каталог из переменной `ZSOS_LOG_DIR` (`vlfm/utils/log_saver.py`); `run_noise_experiment.sh` задаёт её сам,
+для остальных скриптов задайте вручную: `export ZSOS_LOG_DIR=reports/<прогон>/episodes`. Сводка:
+`python scripts/analyze_vlfm_episodes.py <каталог с JSON> --out episodes.csv`.
+
+## 6. Проверка результатов и таблицы
 
 ```bash
-mkdir -p reports/final_report
-python -m pip freeze > reports/final_report/pip_freeze.txt
-conda list --explicit > reports/final_report/conda_explicit.txt
+python scripts/make_tables.py
 ```
 
-## 4. Данные и веса
+Скрипт проверяет совпадение наборов episode ID между прогонами (парность), считает доверительные интервалы Уилсона, точный критерий
+Макнемара (парные эпизоды), критерий Фишера (независимые выборки), бутстрап-интервалы для разности SPL и записывает таблицы и рисунки в
+`reports/final_report/tables/`. Если есть `reports/noise/*/episodes.csv` (результат `run_noise_experiment.sh`), они добавляются в таблицу шума.
 
-Ожидаемый путь к MP3D ObjectNav:
+## 7. Что нельзя воспроизвести из репозитория без перезапуска
 
-```text
-data/datasets/objectnav/mp3d/v1/train/train.json.gz
-```
+Построчные данные основного прогона VLFM и шумовых прогонов nominal/moderate/strong (сохранены только агрегаты и списки неудач при умеренном шуме). Среднее время шага не измерялось.
 
-Каталог сцен:
+Сохранены: видео, кадры на 25 / 50 / 75 %, логи Hydra и tensorboard для 10 эпизодов — `reports/final_report/extra_materials/`; видео эпизодов 20409 и 37246 — `reports/final_report/videos/`.
 
-```text
-data/scene_datasets/
-```
-
-В конфигурации используется сцена:
-
-```text
-17DRP5sb8fy
-```
-
-Также необходимы веса и компоненты, используемые политикой и VLM-серверами. В текущей установке применялись PointNav, GroundingDINO, MobileSAM, YOLOv7 и BLIP2 ITM компоненты.
-
-Проверь наличие основных файлов и каталогов в соответствии с путями, заданными в `scripts/launch_vlm_servers.sh` и конфигурации проекта. Конкретные пути к весам могут отличаться в зависимости от способа подготовки данных.
-
-HM3D в данном эксперименте не использовался: доступ к необходимым данным Matterport был ограничен.
-
-## 5. Запуск VLM-серверов
-
-В отдельном терминале из корня репозитория:
+## 8. Контрольные суммы
 
 ```bash
-conda activate vlfm_habitat
-cd ~/vlfm
-bash scripts/launch_vlm_servers.sh
+bash scripts/update_checksums.sh --check   # проверить artifact_checksums.sha256 и video_checksums.sha256
+bash scripts/update_checksums.sh           # пересчитать после правок документов
 ```
 
-Дождись запуска серверов и проверь сообщения об ошибках в их логах. Скрипт запускает VLM-компоненты, необходимые политике. Перед evaluation они должны быть доступны.
-
-Не запускай evaluation, если серверы не поднялись или не найдены необходимые веса.
-
-## 6. Запуск оценки на 50 эпизодах
-
-В другом терминале:
-
-```bash
-conda activate vlfm_habitat
-cd ~/vlfm
-bash scripts/reproduce_vlfm_50ep.sh
-```
-
-Сценарий:
-- создаёт отдельный каталог результатов с временной меткой;
-- сохраняет сведения об окружении;
-- запускает `vlfm.run`;
-- сохраняет stdout/stderr в `run.log`;
-- записывает видео эпизодов.
-
-Используемые ключевые параметры:
-
-```text
-benchmark/nav/objectnav=objectnav_mp3d
-split=train
-content_scenes=[17DRP5sb8fy]
-gpu_device_id=-1
-seed=100
-max_episode_steps=500
-iterator_options.shuffle=True
-evaluate=True
-should_load_ckpt=False
-policy=HabitatITMPolicyV2
-turn_angle=30
-num_environments=1
-test_episode_count=50
-video_option=[disk]
-```
-
-Обрати внимание: `should_load_ckpt=False`. Обученный PPO checkpoint не загружается. Dummy policy path используется только как параметр конфигурации evaluation.
-
-## 7. Анализ результатов
-
-После завершения evaluation найди каталог `episodes` с JSON-файлами. Передай его анализатору:
-
-```bash
-python scripts/analyze_vlfm_episodes.py \
-  reports/diagnostics/vlfm_50ep_rerun/episodes \
-  --out reports/final_report/vlfm_episodes.csv
-```
-
-Для нового запуска подставь фактический путь к его каталогу `episodes`.
-
-Анализатор:
-- считает число JSON-файлов;
-- проверяет уникальность `episode_id`;
-- рассчитывает SR, средние Success, SPL, SoftSPL и distance to goal;
-- считает частоты `failure_cause`;
-- выводит список неуспешных эпизодов;
-- сохраняет CSV.
-
-## 8. Проверка видеопримеров
-
-В текущий комплект включены:
-
-```text
-videos/episode=20409-...mp4
-videos/episode=37246-...mp4
-```
-
-Контрольные суммы:
-
-```bash
-cd reports/final_report
-sha256sum -c video_checksums.sha256
-```
-
-Если видео заменялись или копировались заново, обнови файл контрольных сумм:
-
-```bash
-sha256sum videos/*.mp4 > video_checksums.sha256
-```
-
-## 9. Ограничения воспроизводимости
-
-- Результат зависит от версий Habitat, PyTorch, VLM-моделей и их весов.
-- Для полного повторения необходимо сохранять все используемые веса и конфигурационные файлы.
-- Seed и shuffle сами по себе не доказывают, что два запуска обработали одинаковые episode ID в одинаковом порядке.
-- Текущая конфигурация использует одну MP3D-сцену и split `train`.
-- Software rendering отличается от полноценного GPU rendering.
-- Запуск без обученного PPO checkpoint не эквивалентен оценке обученной политики из оригинальной статьи.
-- HM3D в текущем эксперименте не использовался.
-
-Для строгого воспроизведения рекомендуется дополнительно архивировать:
-1. полный Git diff;
-2. `pip freeze` и `conda list --explicit`;
-3. YAML-конфигурацию и CLI-команду;
-4. версии и SHA-256 всех весов;
-5. точный список episode ID;
-6. логи VLM-серверов и evaluation;
-7. результаты на нескольких сценах и независимых seed.
+Веса моделей проверяются по `reports/final_report/source_snapshot/model_checksums.sha256` (запускать `sha256sum -c` из корня репозитория, веса должны лежать в `data/`).

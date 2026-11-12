@@ -1,0 +1,22 @@
+{
+    "episode_id": "27356",
+    "scene_id": "17DRP5sb8fy",
+    "failure_cause": "did_not_fail",
+    "distance_to_goal": 0.09337254613637924,
+    "success": 1.0,
+    "spl": 0.2866253436377995,
+    "soft_spl": 0.27530746375495374,
+    "distance_to_goal_reward": -0.0,
+    "traveled_stairs": 0,
+    "target_object": "sink",
+    "gps": "[     1.7165      4.1071]",
+    "yaw": -29.999987174447714,
+    "target_detected": true,
+    "stop_called": true,
+    "render_below_images": [
+        "target_object",
+        "debug"
+    ],
+    "debug": "debug: Best value: 15.20%",
+    "start_yaw": -0.7425395846366882
+}

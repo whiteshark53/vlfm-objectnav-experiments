@@ -1,0 +1,4 @@
+level,xy_white_m,yaw_white_deg,xy_drift_m_per_step,yaw_drift_deg_per_step,n,successes,sr,spl,soft_spl,mean_distance_m,target_detected,stop_called
+nominal,0,0,0,0,50,24,0.48,0.2966,0.3811,2.0804,0.76,0.76
+moderate,0.10,3.0,0.005,0.1,50,9,0.18,0.1280,0.2723,3.7303,0.42,0.42
+strong,0.25,8.0,0.015,0.3,50,3,0.06,0.0488,0.1676,4.4889,0.26,0.26
