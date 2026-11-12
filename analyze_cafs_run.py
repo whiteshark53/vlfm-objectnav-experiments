@@ -9,7 +9,6 @@ log_path = run_dir / "run.log"
 out_csv = run_dir / "episode_metrics.csv"
 out_summary = run_dir / "analysis_summary.txt"
 
-# 1. Метрики из имён видео
 rows = []
 for path in sorted(video_dir.glob("*.mp4")):
     stem = path.stem
@@ -23,7 +22,7 @@ for path in sorted(video_dir.glob("*.mp4")):
         "video_file": path.name,
     }
 
-    # Поддерживает поля вида success=1, SPL=0.42 и т.п.
+    
     for key, value in re.findall(
         r"([A-Za-z][A-Za-z0-9_]*)=([-+]?\d*\.?\d+)",
         stem
@@ -32,12 +31,12 @@ for path in sorted(video_dir.glob("*.mp4")):
 
     rows.append(row)
 
-# 2. Категории отказов из run.log
+
 failure_by_episode = {}
 if log_path.exists():
     log_text = log_path.read_text(errors="replace")
 
-    # Ищем ID эпизода и текст категории отказа в одной строке
+
     for line in log_text.splitlines():
         id_match = re.search(r"(?:episode[=_\s-]*)(\d+)", line, re.I)
         if not id_match:
@@ -57,14 +56,14 @@ for row in rows:
         row["episode_id"], ""
     )
 
-# 3. Единый CSV
+
 fields = sorted({key for row in rows for key in row})
 with out_csv.open("w", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=fields)
     writer.writeheader()
     writer.writerows(rows)
 
-# 4. Сводка
+
 summary = []
 summary.append(f"Videos parsed: {len(rows)}")
 summary.append(f"Failure labels parsed from log: {len(failure_by_episode)}")
